@@ -16,6 +16,11 @@ architecture decisions. Match detail to risk; a plan is not a ritual.
 - Discoverable repository facts have been inspected.
 - Material design choices are settled or explicitly recorded as assumptions.
 
+Use the conversation's Design Handoff when present. If an important product,
+architecture, or behavior decision is unresolved, return to
+`superpowers:brainstorming` instead of guessing. Stable requirements from explicit
+user direction or authoritative repository sources do not require extra questions.
+
 Do not use for simple answers, research-only exploration, one-line changes, or
 tasks whose implementation path is already obvious.
 
@@ -50,5 +55,8 @@ user/repository policy decide whether work is performed inline or delegated.
 Planning does not itself authorize delegation or Git writes.
 
 Keep plans in the conversation by default. Write a plan file only when the user or
-repository requires a durable artifact. End with assumptions and unresolved risks;
-if a high-impact decision remains unresolved, ask before finalizing the plan.
+repository requires a durable artifact. End with a concise Plan Handoff containing
+the chosen approach, constraints, interfaces, tasks, verification, explicit
+assumptions, and unresolved risks. Then stop and wait for the user to authorize
+implementation unless the user already authorized Plan plus execution. A Plan
+request by itself is not execution authorization.
