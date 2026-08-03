@@ -22,6 +22,10 @@ Requirement clarification is a conversational handoff between `brainstorming`
 and `writing-plans`. An approved design moves to planning; a material unresolved
 decision moves back to brainstorming. Code research and repository exploration
 do not trigger this path, and a completed plan does not authorize execution.
+Before the Plan Handoff, `writing-plans` runs an inline Plan Self-Review for
+requirement coverage, decision completeness, cross-task consistency, constraints,
+and verification. It fixes plan-only gaps inline and returns material design gaps
+to `brainstorming`; it does not dispatch an independent plan reviewer.
 
 Manual or high-risk implementation review uses one fresh, read-only reviewer.
 Round one reviews the complete task scope. If blocking findings are fixed, one

@@ -98,6 +98,25 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         self.assertIn("not execution authorization", planning)
         self.assertIn("already authorized Plan plus execution", planning)
 
+    def test_plan_self_review_is_inline_and_routes_gaps(self) -> None:
+        planning = skill_text("writing-plans")
+        self.assertIn("## Plan Self-Review", planning)
+        self.assertIn("Requirement coverage", planning)
+        self.assertIn("Decision completeness", planning)
+        self.assertIn("Placeholder and ambiguity scan", planning)
+        self.assertIn("Cross-task consistency", planning)
+        self.assertIn("Constraints and verification", planning)
+        self.assertIn("Fix plan-only issues inline", planning)
+        self.assertIn("rerun the affected checks", planning)
+        self.assertIn("return to `superpowers:brainstorming`", planning)
+        self.assertIn("Only after Plan Self-Review is clean", planning)
+        self.assertNotIn("plan-document-reviewer", planning)
+        self.assertNotIn("PLAN_CHECKED", planning)
+        self.assertLess(
+            planning.index("## Plan Self-Review"),
+            planning.index("## Execution Boundary"),
+        )
+
     def test_debugging_and_verification_handoff_is_explicit(self) -> None:
         debugging = skill_text("systematic-debugging").lower()
         verification = skill_text("verification-before-completion")
