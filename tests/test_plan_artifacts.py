@@ -312,6 +312,66 @@ class PlanArtifactsTest(unittest.TestCase):
             sorted(path.name for path in (directory / "revisions").iterdir()),
         )
 
+    def test_reentering_plan_mode_reuses_one_directory_and_appends_versions(self) -> None:
+        self.start_plan()
+        first = "# Reentry Plan\n\nVersion one."
+        second = "# Reentry Plan\n\nVersion two."
+        third = "# Reentry Plan\n\nVersion three."
+        self.save(first, turn_id="turn-2")
+        directory = self.plan_dirs()[0]
+
+        plan_artifacts.handle_payload(
+            self.payload(
+                "UserPromptSubmit",
+                turn_id="turn-3",
+                mode="default",
+                prompt="Explain the current status.",
+            )
+        )
+        reentered = plan_artifacts.handle_payload(
+            self.payload(
+                "UserPromptSubmit",
+                turn_id="turn-4",
+                mode="plan",
+                prompt="Revise this Plan to version two.",
+            )
+        )
+        self.assertIn(
+            str(directory / "current.md"),
+            reentered["hookSpecificOutput"]["additionalContext"],
+        )
+        self.save(second, turn_id="turn-4")
+
+        plan_artifacts.handle_payload(
+            self.payload(
+                "UserPromptSubmit",
+                turn_id="turn-5",
+                mode="default",
+                prompt="Implement the plan.",
+            )
+        )
+        plan_artifacts.handle_payload(
+            self.payload(
+                "UserPromptSubmit",
+                turn_id="turn-6",
+                mode="plan",
+                prompt="Revise this Plan to version three.",
+            )
+        )
+        self.save(third, turn_id="turn-6")
+
+        self.assertEqual([directory], self.plan_dirs())
+        self.assertEqual(third + "\n", (directory / "current.md").read_text())
+        self.assertEqual(
+            ["0001.md", "0002.md", "0003.md"],
+            sorted(path.name for path in (directory / "revisions").iterdir()),
+        )
+        alignment = self.alignment(directory)
+        self.assertIn("Revise this Plan to version two.", alignment)
+        self.assertIn("Revise this Plan to version three.", alignment)
+        self.assertNotIn("Explain the current status.", alignment)
+        self.assertNotIn("Implement the plan.", alignment)
+
     def test_stop_recovers_native_plan_item_when_last_message_is_stripped(self) -> None:
         self.start_plan()
         plan = "# Native Plan Item\n\nCodex strips the wrapper before Stop."

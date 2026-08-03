@@ -34,6 +34,11 @@ contents:
   and paired AI questions and user answers.
 - `current.md` is the last complete candidate Plan presented for approval.
 
+Entering Plan mode again in the same Codex session reuses that directory. Leaving
+Plan mode for Default or Execute does not close or unlink it; each later distinct
+complete Plan is appended as the next revision in the same directory. Start a new
+Codex task when the work is an independent Plan rather than a revision.
+
 Before creating or revising a Plan, read the complete `alignment.md` and, when it
 exists, `current.md`. Treat an artifact read or required write failure as blocking;
 do not continue with a partial or unrecorded understanding.

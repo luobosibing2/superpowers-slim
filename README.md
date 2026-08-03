@@ -34,7 +34,10 @@ During Plan work, one lightweight hook adapter records each Codex task in its ow
 directives plus paired AI questions and user answers, `current.md` holds the
 complete current Plan, and `revisions/` preserves every distinct prior candidate.
 Different tasks in the same cwd use different directories and never share a
-`current.md`.
+`current.md`. Re-entering Plan mode in the same Codex session keeps using the same
+directory, including after a Default or Execute turn, and appends each distinct
+complete Plan as the next revision. A separate independent Plan requires a new
+Codex task.
 
 The planning order is requirement alignment, complete candidate, inline
 Self-Review, durable write, Plan Handoff, and user approval. Required writes fail

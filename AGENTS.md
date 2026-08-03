@@ -17,7 +17,9 @@ This repository is a Codex-only slim profile, not the upstream complete workflow
   Check state.
 - During Plan work, record user directives and all AI question/user answer pairs
   in the task's `alignment.md`. Each session has at most one associated Plan;
-  different sessions in one cwd may use independent Plan directories.
+  leaving and re-entering Plan mode in that session must reuse its directory and
+  append distinct complete Plans as revisions. Different sessions in one cwd may
+  use independent Plan directories.
 - Keep all `SKILL.md` files at or below 500 lines in total.
 - Keep Review Loops to one full review plus one scoped re-review.
 - Keep reviewers read-only and prohibit nested delegation from the reviewer.
