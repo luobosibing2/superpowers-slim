@@ -33,13 +33,29 @@ happen later.
 6. Treat a direction as approved only when the user explicitly accepts it or an
    authoritative repository source settles it. Silence is not approval.
 
+## Alignment Recording
+
+During Plan work, every question and answer must be recoverable in the active
+Plan's `alignment.md`. Prefer `request_user_input` for structured questions; the
+Plan artifact hook records the question before display and pairs the tool result
+afterward. For a directly written question, wrap the complete question context in
+the invisible markers below so the Stop hook can record it as one Q entry:
+
+```html
+<!-- superpowers-plan-question -->
+Complete question context
+<!-- /superpowers-plan-question -->
+```
+
+Ask only questions that can materially change the design. If a required write
+fails, stop: an unrecorded question or answer is not an approved requirement.
+
 ## Design Handoff
 
-Keep the handoff in the conversation unless a repository contract requires a
-document. Record the approved direction, approval evidence, constraints, success
-criteria, and any unresolved items. If material items remain, ask one focused
-question and stop. Otherwise invoke `superpowers:writing-plans` when a substantial
-implementation plan is needed.
+Record the approved direction, approval evidence, constraints, success criteria,
+and any unresolved items in the active alignment artifact. If material items
+remain, ask one focused recorded question and stop. Otherwise invoke
+`superpowers:writing-plans` when a substantial implementation plan is needed.
 
 Brainstorming never authorizes code changes, sub-agent delegation, worktree
 creation, or any other execution action.

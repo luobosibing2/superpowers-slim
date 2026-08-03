@@ -24,6 +24,20 @@ user direction or authoritative repository sources do not require extra question
 Do not use for simple answers, research-only exploration, one-line changes, or
 tasks whose implementation path is already obvious.
 
+## Plan Artifacts
+
+During Plan work, the plugin hook associates this Codex task with one directory
+under `.plan/`. Its short injected context names two paths without injecting their
+contents:
+
+- `alignment.md` is the requirement source of truth. It contains user directives
+  and paired AI questions and user answers.
+- `current.md` is the last complete candidate Plan presented for approval.
+
+Before creating or revising a Plan, read the complete `alignment.md` and, when it
+exists, `current.md`. Treat an artifact read or required write failure as blocking;
+do not continue with a partial or unrecorded understanding.
+
 ## Plan Contract
 
 Start with the goal and a short architecture summary. Include these sections when
@@ -66,8 +80,29 @@ This is an inline root-agent check, not a sub-agent or reviewer dispatch.
 
 Fix plan-only issues inline, then rerun the affected checks. If the check exposes
 a material requirement or design gap, return to `superpowers:brainstorming` and
-wait for approval before rebuilding the plan. Do not create persistent Plan Check
-state, and do not require a plan file when conversation context is sufficient.
+wait for approval before rebuilding the plan. Do not overwrite the current Plan
+with a candidate that still has a requirement or design gap. Do not create
+`PLAN_CHECKED`, reviewer state, hashes, or a separate Plan Check workflow.
+
+## Plan Revision Safety
+
+For every revision:
+
+1. Use the complete existing `current.md` as the baseline, not a summary or the
+   latest requested change in isolation.
+2. Apply only approved changes. Preserve unaffected experiment definitions,
+   behavior, interfaces, constraints, edge cases, and verification.
+3. Reconcile the full candidate against every entry in `alignment.md`.
+4. Run Plan Self-Review again over the complete candidate. Fix plan-only defects
+   inline; route requirement or design gaps back to `superpowers:brainstorming`.
+5. Only after the full candidate is clean, emit it once inside
+   `<proposed_plan>...</proposed_plan>`.
+
+The Stop hook writes a changed candidate to the next non-overwriting
+`revisions/NNNN.md`, then atomically replaces `current.md`, before the Handoff can
+be treated as valid. Identical content creates no duplicate revision. A first H1
+may rename the task's draft directory, but a naming failure must never discard the
+Plan. The files contain no Plan hash, and revision numbers are not prompt state.
 
 ## Execution Boundary
 
@@ -75,10 +110,11 @@ The plan does not choose an execution engine. The root Codex agent and active
 user/repository policy decide whether work is performed inline or delegated.
 Planning does not itself authorize delegation or Git writes.
 
-Keep plans in the conversation by default. Write a plan file only when the user or
-repository requires a durable artifact. Only after Plan Self-Review is clean, end
-with a concise Plan Handoff containing
+The fixed order is: requirement alignment, complete candidate Plan, Plan
+Self-Review, durable write, Plan Handoff, then user approval. The Handoff contains
 the chosen approach, constraints, interfaces, tasks, verification, explicit
-assumptions, and unresolved risks. Then stop and wait for the user to authorize
+assumptions, and unresolved risks. Stop and wait for the user to authorize
 implementation unless the user already authorized Plan plus execution. A Plan
-request by itself is not execution authorization.
+request by itself is not execution authorization. Codex's native Plan-to-Execute
+handoff remains authoritative; the plugin injects only artifact paths and never a
+second copy of the Plan.

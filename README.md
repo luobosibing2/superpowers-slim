@@ -27,6 +27,27 @@ requirement coverage, decision completeness, cross-task consistency, constraints
 and verification. It fixes plan-only gaps inline and returns material design gaps
 to `brainstorming`; it does not dispatch an independent plan reviewer.
 
+## Durable Plan journal
+
+During Plan work, one lightweight hook adapter records each Codex task in its own
+`.plan/<timestamp>-<title>-<session>/` directory. `alignment.md` preserves user
+directives plus paired AI questions and user answers, `current.md` holds the
+complete current Plan, and `revisions/` preserves every distinct prior candidate.
+Different tasks in the same cwd use different directories and never share a
+`current.md`.
+
+The planning order is requirement alignment, complete candidate, inline
+Self-Review, durable write, Plan Handoff, and user approval. Required writes fail
+closed. The adapter injects only the active artifact paths, leaving Codex's native
+Plan-to-Execute handoff intact. It adds no reviewer loop, Plan hash, MCP server,
+Git snapshot, completion gate, or top-level workflow controller, and it does not
+change `.gitignore` or decide whether `.plan/` is committed.
+
+Codex discovers the adapter through the standard `hooks/hooks.json` plugin path;
+the manifest advertises its `Write` capability and Plan-journal keywords. A
+cancelled structured question is finalized as cancelled or failed at the next
+Stop, prompt submission, or session start if no successful PostToolUse arrived.
+
 Manual or high-risk implementation review uses one fresh, read-only reviewer.
 Round one reviews the complete task scope. If blocking findings are fixed, one
 fresh scoped re-review may inspect those fixes and nearby regressions. There is no

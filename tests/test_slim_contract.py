@@ -32,9 +32,7 @@ REMOVED_RUNTIME_TERMS = {
     "assess_review",
     "prepare_verification",
     "record_verification",
-    "PostToolUse",
     "diff hash",
-    "completion gate",
     "mcpServers",
 }
 
@@ -70,8 +68,16 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         for term in REMOVED_RUNTIME_TERMS:
             self.assertNotIn(term, text)
 
-    def test_runtime_controller_is_absent(self) -> None:
-        for relative in (".mcp.json", "hooks", "schemas", "scripts"):
+    def test_plan_journal_is_the_only_runtime_adapter(self) -> None:
+        expected = {"hooks/hooks.json", "scripts/plan_artifacts.py"}
+        actual = {
+            path.relative_to(ROOT).as_posix()
+            for parent in (ROOT / "hooks", ROOT / "scripts")
+            for path in parent.rglob("*")
+            if path.is_file() and "__pycache__" not in path.parts
+        }
+        self.assertEqual(expected, actual)
+        for relative in (".mcp.json", "schemas"):
             self.assertFalse((ROOT / relative).exists(), relative)
 
     def test_non_codex_bootstraps_are_removed(self) -> None:
@@ -82,6 +88,11 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text())
         self.assertEqual("superpowers", manifest["name"])
         self.assertIn("scoped", manifest["description"].lower())
+        self.assertIn("Write", manifest["interface"]["capabilities"])
+        self.assertIn("hooks", manifest["keywords"])
+        self.assertIn("plan-journal", manifest["keywords"])
+        self.assertTrue((ROOT / "hooks" / "hooks.json").is_file())
+        self.assertNotIn("hooks", manifest)
         self.assertNotIn("mcpServers", manifest)
         self.assertNotIn("TDD", manifest["interface"]["longDescription"])
 
@@ -109,12 +120,59 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         self.assertIn("Fix plan-only issues inline", planning)
         self.assertIn("rerun the affected checks", planning)
         self.assertIn("return to `superpowers:brainstorming`", planning)
-        self.assertIn("Only after Plan Self-Review is clean", planning)
+        self.assertIn("Only after the full candidate is clean", planning)
         self.assertNotIn("plan-document-reviewer", planning)
-        self.assertNotIn("PLAN_CHECKED", planning)
+        adapter = (ROOT / "scripts" / "plan_artifacts.py").read_text()
+        self.assertNotIn("PLAN_CHECKED", adapter)
+        self.assertNotIn("sha256", adapter.lower())
         self.assertLess(
             planning.index("## Plan Self-Review"),
             planning.index("## Execution Boundary"),
+        )
+
+    def test_plan_revision_contract_is_durable_and_ordered(self) -> None:
+        brainstorming = skill_text("brainstorming")
+        planning = skill_text("writing-plans")
+        readme = (ROOT / "README.md").read_text()
+        self.assertIn("superpowers-plan-question", brainstorming)
+        self.assertIn("every question and answer", brainstorming)
+        self.assertIn("alignment.md", planning)
+        self.assertIn("current.md", planning)
+        self.assertIn("## Plan Revision Safety", planning)
+        self.assertIn("complete existing `current.md` as the baseline", planning)
+        self.assertIn("Apply only approved changes", planning)
+        self.assertIn("revisions/NNNN.md", planning)
+        self.assertIn("atomically replaces `current.md`", planning)
+        self.assertIn("before the Handoff can", planning)
+        self.assertIn("requirement alignment, complete candidate Plan, Plan", planning)
+        self.assertIn("durable write, Plan Handoff, then user approval", planning)
+        self.assertIn("injects only artifact paths", planning)
+        self.assertIn("Different tasks in the same cwd", readme)
+        self.assertNotIn("SHA-256", planning)
+        self.assertLess(
+            planning.index("## Plan Self-Review"),
+            planning.index("## Plan Revision Safety"),
+        )
+        self.assertLess(
+            planning.index("## Plan Revision Safety"),
+            planning.index("## Execution Boundary"),
+        )
+
+    def test_hook_manifest_uses_one_dependency_free_adapter(self) -> None:
+        hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text())["hooks"]
+        self.assertEqual(
+            {"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"},
+            set(hooks),
+        )
+        commands = {
+            hook["command"]
+            for groups in hooks.values()
+            for group in groups
+            for hook in group["hooks"]
+        }
+        self.assertEqual(
+            {'/usr/bin/env python3 "${PLUGIN_ROOT}/scripts/plan_artifacts.py"'},
+            commands,
         )
 
     def test_debugging_and_verification_handoff_is_explicit(self) -> None:

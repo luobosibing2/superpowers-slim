@@ -1,14 +1,14 @@
 {
   "name": "superpowers",
-  "version": "6.1.1+codex.20260803104731",
-  "description": "Five optional, scoped development methods for Codex.",
+  "version": "6.1.1+codex.20260803171749",
+  "description": "Five scoped Codex methods with a lightweight durable Plan journal.",
   "author": {
     "name": "Jesse Vincent",
     "email": "jesse@fsck.com",
     "url": "https://github.com/obra"
   },
-  "homepage": "https://github.com/obra/superpowers",
-  "repository": "https://github.com/obra/superpowers",
+  "homepage": "https://github.com/luobosibing2/superpowers-slim",
+  "repository": "https://github.com/luobosibing2/superpowers-slim",
   "license": "MIT",
   "keywords": [
     "brainstorming",
@@ -16,6 +16,8 @@
     "debugging",
     "verification",
     "requirements",
+    "hooks",
+    "plan-journal",
     "code-review",
     "skills"
   ],
@@ -23,19 +25,20 @@
   "interface": {
     "displayName": "Superpowers Slim",
     "shortDescription": "Five lightweight, scoped development methods",
-    "longDescription": "Adds optional Codex methods for design clarification, implementation planning, systematic debugging, bounded independent review, and evidence-backed completion.",
+    "longDescription": "Adds optional Codex methods for design clarification, durable implementation planning, systematic debugging, bounded independent review, and evidence-backed completion.",
     "developerName": "Jesse Vincent",
     "category": "Developer Tools",
     "capabilities": [
       "Interactive",
-      "Read"
+      "Read",
+      "Write"
     ],
     "defaultPrompt": [
       "Help me clarify the design for this substantial change.",
-      "Create a decision-complete implementation plan for this work.",
+      "Create and durably preserve a decision-complete implementation plan for this work.",
       "Run a bounded independent review of this implementation."
     ],
-    "websiteURL": "https://github.com/obra/superpowers",
+    "websiteURL": "https://github.com/luobosibing2/superpowers-slim",
     "privacyPolicyURL": "https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement",
     "termsOfServiceURL": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
     "brandColor": "#F59E0B",
