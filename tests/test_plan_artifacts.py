@@ -40,6 +40,18 @@ class PlanArtifactsTest(unittest.TestCase):
             handle.write(json.dumps(item) + "\n")
         return path
 
+    def append_plan_item(self, path: Path, turn_id: str, plan: str) -> None:
+        item = {
+            "type": "event_msg",
+            "payload": {
+                "type": "item_completed",
+                "turn_id": turn_id,
+                "item": {"type": "Plan", "id": f"{turn_id}-plan", "text": plan},
+            },
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(item) + "\n")
+
     def payload(
         self,
         event: str,
@@ -299,6 +311,27 @@ class PlanArtifactsTest(unittest.TestCase):
             ["0001.md", "0002.md"],
             sorted(path.name for path in (directory / "revisions").iterdir()),
         )
+
+    def test_stop_recovers_native_plan_item_when_last_message_is_stripped(self) -> None:
+        self.start_plan()
+        plan = "# Native Plan Item\n\nCodex strips the wrapper before Stop."
+        transcript = self.transcript("session-a1b2c3d4", "turn-native", "plan")
+        self.append_plan_item(transcript, "turn-native", plan)
+        result = plan_artifacts.handle_payload(
+            {
+                "hook_event_name": "Stop",
+                "session_id": "session-a1b2c3d4",
+                "turn_id": "turn-native",
+                "cwd": str(self.cwd),
+                "transcript_path": str(transcript),
+                "last_assistant_message": None,
+            }
+        )
+        self.assertTrue(result["continue"])
+        directory = self.plan_dirs()[0]
+        self.assertIn("native-plan-item", directory.name)
+        self.assertEqual(plan + "\n", (directory / "current.md").read_text())
+        self.assertEqual(plan + "\n", (directory / "revisions" / "0001.md").read_text())
 
     def test_current_write_retry_reuses_the_durable_revision(self) -> None:
         self.start_plan()

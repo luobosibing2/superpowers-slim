@@ -1,6 +1,6 @@
 {
   "name": "superpowers",
-  "version": "6.1.1+codex.20260803171749",
+  "version": "6.1.1+codex.20260803172749",
   "description": "Five scoped Codex methods with a lightweight durable Plan journal.",
   "author": {
     "name": "Jesse Vincent",

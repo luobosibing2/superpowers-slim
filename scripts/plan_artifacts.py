@@ -314,6 +314,50 @@ def latest_collaboration_mode(transcript_path: Any, turn_id: str | None = None) 
     return exact or latest
 
 
+def plan_from_transcript(transcript_path: Any, turn_id: str) -> str | None:
+    if not transcript_path:
+        return None
+    path = Path(str(transcript_path))
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise JournalError(f"cannot read hook transcript {path}: {exc}") from exc
+    candidate: str | None = None
+    for line in lines:
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if record.get("type") == "event_msg":
+            payload = record.get("payload", {})
+            item = payload.get("item", {})
+            if (
+                payload.get("type") == "item_completed"
+                and payload.get("turn_id") == turn_id
+                and isinstance(item, dict)
+                and item.get("type") == "Plan"
+                and isinstance(item.get("text"), str)
+            ):
+                candidate = item["text"].strip()
+        elif record.get("type") == "response_item":
+            payload = record.get("payload", {})
+            metadata = payload.get("internal_chat_message_metadata_passthrough", {})
+            if payload.get("role") != "assistant" or metadata.get("turn_id") != turn_id:
+                continue
+            content = payload.get("content", [])
+            if not isinstance(content, list):
+                continue
+            combined = "".join(
+                str(part.get("text", ""))
+                for part in content
+                if isinstance(part, dict) and part.get("type") == "output_text"
+            )
+            match = PLAN_RE.search(combined)
+            if match:
+                candidate = match.group(1).strip()
+    return candidate
+
+
 def pointer_context(directory: Path) -> str:
     alignment = directory / "alignment.md"
     current = directory / "current.md"
@@ -697,13 +741,16 @@ def handle_post_tool(payload: dict[str, Any]) -> dict[str, Any]:
 def handle_stop(payload: dict[str, Any]) -> dict[str, Any]:
     message = str(payload.get("last_assistant_message") or "")
     plan_match = PLAN_RE.search(message)
+    plan = plan_match.group(1).strip() if plan_match else plan_from_transcript(
+        payload.get("transcript_path"), str(payload.get("turn_id", ""))
+    )
     mode = latest_collaboration_mode(payload.get("transcript_path"), payload.get("turn_id"))
-    if mode != "plan" and not plan_match:
+    if mode != "plan" and plan is None:
         return {"continue": True, "suppressOutput": True}
     directory = get_or_create_plan(plan_root(str(payload["cwd"])), str(payload["session_id"]))
     cancel_pending_structured(directory, str(payload.get("session_id", "")))
-    if plan_match:
-        save_plan(directory, plan_match.group(1).strip())
+    if plan is not None:
+        save_plan(directory, plan)
         return {"continue": True, "suppressOutput": True}
     marked = QUESTION_RE.findall(message)
     question = "\n\n".join(part.strip() for part in marked if part.strip())
