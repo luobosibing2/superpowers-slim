@@ -6,7 +6,8 @@ into every conversation.
 
 ## Included skills
 
-- `brainstorming`: clarify design decisions during Plan work.
+- `brainstorming`: clarify design decisions during explicit Plan or Default-mode
+  planning work.
 - `writing-plans`: produce decision-complete plans for substantial changes.
 - `systematic-debugging`: investigate failures from evidence to root cause.
 - `verification-before-completion`: require fresh evidence before completion claims.
@@ -22,6 +23,8 @@ Requirement clarification is a conversational handoff between `brainstorming`
 and `writing-plans`. An approved design moves to planning; a material unresolved
 decision moves back to brainstorming. Code research and repository exploration
 do not trigger this path, and a completed plan does not authorize execution.
+Asking to make a Plan is planning-only unless the same instruction also requests
+execution or the user authorizes implementation later.
 Before the Plan Handoff, `writing-plans` runs an inline Plan Self-Review for
 requirement coverage, decision completeness, cross-task consistency, constraints,
 and verification. It fixes plan-only gaps inline and returns material design gaps
@@ -29,10 +32,12 @@ to `brainstorming`; it does not dispatch an independent plan reviewer.
 
 ## Durable Plan journal
 
-During Plan work, one lightweight hook adapter records each Codex task in its own
-`.plan/<timestamp>-<title>-<session>/` directory. `alignment.md` preserves user
-directives plus paired AI questions and user answers, `current.md` holds the
-complete current Plan, and `revisions/` preserves every distinct prior candidate.
+In Plan and Default mode, one lightweight hook adapter records every root-agent
+`request_user_input` question and answer without requiring a special ID prefix.
+The first structured question can create a `.plan/<task>/` directory whose
+`alignment.md` preserves the triggering directive and paired Q/A even before a
+Plan exists. `current.md` holds the complete current Plan when one is handed off,
+and `revisions/` preserves every distinct prior candidate.
 Different tasks in the same cwd use different directories and never share a
 `current.md`. Re-entering Plan mode in the same Codex session keeps using the same
 directory, including after a Default or Execute turn, and appends each distinct

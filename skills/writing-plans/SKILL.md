@@ -24,6 +24,9 @@ user direction or authoritative repository sources do not require extra question
 Do not use for simple answers, research-only exploration, one-line changes, or
 tasks whose implementation path is already obvious.
 
+An explicit request for a Plan can activate this method in Plan or Default mode.
+It does not switch Codex collaboration mode or authorize implementation.
+
 ## Plan Artifacts
 
 During Plan work, the plugin hook associates this Codex task with one directory

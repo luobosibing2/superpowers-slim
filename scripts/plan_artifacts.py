@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persist Superpowers Slim planning questions and plan revisions."""
+"""Persist Superpowers Slim questions and complete Plan revisions."""
 
 from __future__ import annotations
 
@@ -14,17 +14,20 @@ from pathlib import Path
 from typing import Any
 
 
-PLAN_RE = re.compile(r"<proposed_plan>\s*(.*?)\s*</proposed_plan>", re.DOTALL)
+PLAN_RE = re.compile(
+    r"^[ \t]*<proposed_plan>[ \t]*\r?\n(.*?)\r?\n^[ \t]*</proposed_plan>[ \t]*\r?$",
+    re.DOTALL | re.MULTILINE,
+)
 ARTIFACT_PLAN_RE = re.compile(
-    r"<!-- superpowers-artifact-plan -->\s*(.*?)\s*"
-    r"<!-- /superpowers-artifact-plan -->",
-    re.DOTALL,
+    r"^[ \t]*<!-- superpowers-artifact-plan -->[ \t]*\r?\n(.*?)\r?\n"
+    r"^[ \t]*<!-- /superpowers-artifact-plan -->[ \t]*\r?$",
+    re.DOTALL | re.MULTILINE,
 )
 ENTRY_RE = re.compile(r"<!-- superpowers-entry (\{.*?\}) -->")
 QUESTION_RE = re.compile(
-    r"<!-- superpowers-plan-question -->\s*(.*?)\s*"
-    r"<!-- /superpowers-plan-question -->",
-    re.DOTALL,
+    r"^[ \t]*<!-- superpowers-plan-question -->[ \t]*\r?\n(.*?)\r?\n"
+    r"^[ \t]*<!-- /superpowers-plan-question -->[ \t]*\r?$",
+    re.DOTALL | re.MULTILINE,
 )
 META_PREFIX = "<!-- superpowers-slim-plan "
 META_SUFFIX = " -->"
@@ -319,11 +322,94 @@ def latest_collaboration_mode(transcript_path: Any, turn_id: str | None = None) 
     return exact or latest
 
 
+def user_prompt_from_transcript(transcript_path: Any, turn_id: str) -> str | None:
+    if not transcript_path:
+        return None
+    path = Path(str(transcript_path))
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise JournalError(f"cannot read hook transcript {path}: {exc}") from exc
+    candidate: str | None = None
+    for line in lines:
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if record.get("type") != "response_item":
+            continue
+        payload = record.get("payload", {})
+        metadata = payload.get("internal_chat_message_metadata_passthrough", {})
+        if payload.get("role") != "user" or metadata.get("turn_id") != turn_id:
+            continue
+        content = payload.get("content", [])
+        if not isinstance(content, list):
+            continue
+        combined = "".join(
+            str(part.get("text", ""))
+            for part in content
+            if isinstance(part, dict) and part.get("type") == "input_text"
+        ).strip()
+        if combined:
+            candidate = combined
+    return candidate
+
+
+def mask_fenced_code(message: str) -> str:
+    masked: list[str] = []
+    fence_char: str | None = None
+    fence_length = 0
+    for line in message.splitlines(keepends=True):
+        body = line.rstrip("\r\n")
+        newline = line[len(body) :]
+        stripped = body.lstrip(" \t")
+        run = 0
+        if stripped and stripped[0] in {"`", "~"}:
+            while run < len(stripped) and stripped[run] == stripped[0]:
+                run += 1
+        is_marker = run >= 3
+        is_closing = (
+            fence_char is not None
+            and is_marker
+            and stripped[0] == fence_char
+            and run >= fence_length
+            and not stripped[run:].strip()
+        )
+        if fence_char is None and is_marker:
+            fence_char = stripped[0]
+            fence_length = run
+            masked.append(" " * len(body) + newline)
+        elif fence_char is not None:
+            masked.append(" " * len(body) + newline)
+            if is_closing:
+                fence_char = None
+                fence_length = 0
+        else:
+            masked.append(line)
+    return "".join(masked)
+
+
+def marked_sections(pattern: re.Pattern[str], message: str) -> list[str]:
+    searchable = mask_fenced_code(message)
+    return [
+        message[match.start(1) : match.end(1)].strip()
+        for match in pattern.finditer(searchable)
+    ]
+
+
+def validate_plan(plan: str) -> str:
+    normalized = plan.strip()
+    compact = re.sub(r"\s+", "", normalized).casefold()
+    if not normalized or re.fullmatch(r"(?:\.{3,}|…+|tbd|todo|placeholder)", compact):
+        raise JournalError("marked Plan is empty or placeholder-only")
+    return normalized
+
+
 def marked_plan(message: str) -> str | None:
     for pattern in (PLAN_RE, ARTIFACT_PLAN_RE):
-        match = pattern.search(message)
-        if match:
-            return match.group(1).strip()
+        matches = marked_sections(pattern, message)
+        if matches:
+            return validate_plan(matches[0])
     return None
 
 
@@ -368,7 +454,7 @@ def plan_from_transcript(transcript_path: Any, turn_id: str) -> str | None:
             marked = marked_plan(combined)
             if marked is not None:
                 candidate = marked
-    return candidate
+    return validate_plan(candidate) if candidate is not None else None
 
 
 def pointer_context(directory: Path, mode: str | None = None) -> str:
@@ -696,6 +782,26 @@ def request_questions(payload: dict[str, Any]) -> list[tuple[str | None, Any]]:
     return result
 
 
+def append_transcript_directive(
+    directory: Path,
+    payload: dict[str, Any],
+    *,
+    required: bool,
+) -> None:
+    prompt = user_prompt_from_transcript(
+        payload.get("transcript_path"), str(payload.get("turn_id", ""))
+    )
+    if prompt is None:
+        if required:
+            raise JournalError("cannot recover the current user directive before recording a question")
+        return
+    if prompt.strip() == NATIVE_IMPLEMENT_PROMPT or NATIVE_HANDOFF_RE.match(prompt):
+        return
+    directive_payload = dict(payload)
+    directive_payload["prompt"] = prompt
+    append_directive(directory, directive_payload)
+
+
 def handle_user_prompt(payload: dict[str, Any]) -> dict[str, Any]:
     root = plan_root(str(payload["cwd"]))
     session_id = str(payload.get("session_id", ""))
@@ -732,17 +838,29 @@ def handle_user_prompt(payload: dict[str, Any]) -> dict[str, Any]:
         cancel_pending_structured(directory, session_id)
     elif directory is not None:
         cancel_pending_structured(directory, session_id)
+        answer_pending(
+            directory,
+            payload,
+            source="conversation",
+            response=str(payload.get("prompt", "")),
+            latest_only=True,
+        )
     return success_output(pointer_context(directory, mode) if directory is not None else None)
 
 
 def handle_pre_tool(payload: dict[str, Any]) -> dict[str, Any]:
     if payload.get("tool_name") != "request_user_input":
         return noop_output("PreToolUse")
-    mode = latest_collaboration_mode(payload.get("transcript_path"), payload.get("turn_id"))
-    if mode != "plan":
+    questions = request_questions(payload)
+    if not questions:
         return noop_output("PreToolUse")
-    directory = get_or_create_plan(plan_root(str(payload["cwd"])), str(payload["session_id"]))
-    for question_id, question in request_questions(payload):
+    root = plan_root(str(payload["cwd"]))
+    session_id = str(payload["session_id"])
+    directory = find_plan_for_session(root, session_id)
+    is_new = directory is None
+    directory = directory or create_plan_for_session(root, session_id)
+    append_transcript_directive(directory, payload, required=is_new)
+    for question_id, question in questions:
         append_question(directory, payload, question, "request_user_input", question_id)
     return noop_output("PreToolUse")
 
@@ -772,18 +890,21 @@ def handle_stop(payload: dict[str, Any]) -> dict[str, Any]:
             payload.get("transcript_path"), str(payload.get("turn_id", ""))
         )
     mode = latest_collaboration_mode(payload.get("transcript_path"), payload.get("turn_id"))
-    if mode != "plan" and plan is None:
+    marked_questions = [part for part in marked_sections(QUESTION_RE, message) if part]
+    if mode != "plan" and plan is None and not marked_questions:
         return {"continue": True, "suppressOutput": True}
-    directory = get_or_create_plan(plan_root(str(payload["cwd"])), str(payload["session_id"]))
+    root = plan_root(str(payload["cwd"]))
+    session_id = str(payload["session_id"])
+    directory = find_plan_for_session(root, session_id)
+    is_new = directory is None
+    directory = directory or create_plan_for_session(root, session_id)
+    if marked_questions:
+        append_transcript_directive(directory, payload, required=is_new)
     cancel_pending_structured(directory, str(payload.get("session_id", "")))
     if plan is not None:
         save_plan(directory, plan)
         return {"continue": True, "suppressOutput": True}
-    marked = QUESTION_RE.findall(message)
-    question = "\n\n".join(part.strip() for part in marked if part.strip())
-    if not question and ("?" in message or "？" in message):
-        question = message.strip()
-    if question:
+    for question in marked_questions:
         append_question(directory, payload, question, "conversation")
     return {"continue": True, "suppressOutput": True}
 

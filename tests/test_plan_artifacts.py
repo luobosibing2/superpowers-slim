@@ -65,6 +65,19 @@ class PlanArtifactsTest(unittest.TestCase):
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(item) + "\n")
 
+    def append_user_message(self, path: Path, turn_id: str, message: str) -> None:
+        item = {
+            "type": "response_item",
+            "payload": {
+                "type": "message",
+                "role": "user",
+                "content": [{"type": "input_text", "text": message}],
+                "internal_chat_message_metadata_passthrough": {"turn_id": turn_id},
+            },
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(item) + "\n")
+
     def payload(
         self,
         event: str,
@@ -212,6 +225,57 @@ class PlanArtifactsTest(unittest.TestCase):
         self.assertNotIn("_Pending_", alignment)
         self.assertNotIn('"answers": {', alignment)
 
+    def test_default_structured_questions_create_alignment_without_prefix(self) -> None:
+        turn_id = "turn-default-question"
+        pre_payload = self.payload(
+            "PreToolUse",
+            turn_id=turn_id,
+            mode="default",
+            tool_name="request_user_input",
+            tool_use_id="tool-default",
+            tool_input={
+                "questions": [
+                    {"id": "scope", "question": "Which scope should we use?"},
+                    {"id": "format", "question": "Which format should we emit?"},
+                ]
+            },
+        )
+        transcript = Path(pre_payload["transcript_path"])
+        self.append_user_message(transcript, turn_id, "Injected AGENTS.md context")
+        self.append_user_message(transcript, turn_id, "Help me compare the available choices.")
+
+        pre = plan_artifacts.handle_payload(pre_payload)
+
+        self.assertEqual({"continue": True}, pre)
+        directory = self.plan_dirs()[0]
+        alignment = self.alignment(directory)
+        self.assertIn("Help me compare the available choices.", alignment)
+        self.assertNotIn("Injected AGENTS.md context", alignment)
+        self.assertIn('"question_id":"scope"', alignment)
+        self.assertIn('"question_id":"format"', alignment)
+        self.assertFalse((directory / "current.md").exists())
+
+        post = plan_artifacts.handle_payload(
+            self.payload(
+                "PostToolUse",
+                turn_id=turn_id,
+                mode="default",
+                tool_name="request_user_input",
+                tool_use_id="tool-default",
+                tool_response={
+                    "answers": {
+                        "scope": {"answers": ["Narrow"]},
+                        "format": {"answers": ["Markdown"]},
+                    }
+                },
+            )
+        )
+        self.assertEqual({"continue": True}, post)
+        alignment = self.alignment(directory)
+        self.assertIn("Narrow", alignment)
+        self.assertIn("Markdown", alignment)
+        self.assertEqual(2, alignment.count('"status":"answered"'))
+
     def test_marked_conversation_question_is_paired_with_next_answer(self) -> None:
         self.start_plan()
         question = (
@@ -234,6 +298,42 @@ class PlanArtifactsTest(unittest.TestCase):
         self.assertIn("Yes, only replace the approved section.", alignment)
         self.assertEqual(1, alignment.count("## Q-"))
         self.assertEqual(2, alignment.count("## D-"))
+
+    def test_default_marked_question_creates_alignment_and_pairs_answer(self) -> None:
+        turn_id = "turn-default-direct-question"
+        stop_payload = self.payload(
+            "Stop",
+            turn_id=turn_id,
+            mode="default",
+            last_assistant_message=(
+                "<!-- superpowers-plan-question -->\n"
+                "Should this remain a lightweight artifact?\n"
+                "<!-- /superpowers-plan-question -->"
+            ),
+        )
+        self.append_user_message(
+            Path(stop_payload["transcript_path"]),
+            turn_id,
+            "Ask one direct clarification before planning.",
+        )
+
+        stopped = plan_artifacts.handle_payload(stop_payload)
+
+        self.assertTrue(stopped["continue"])
+        directory = self.plan_dirs()[0]
+        self.assertIn("Ask one direct clarification before planning.", self.alignment(directory))
+        plan_artifacts.handle_payload(
+            self.payload(
+                "UserPromptSubmit",
+                turn_id="turn-default-direct-answer",
+                mode="default",
+                prompt="Yes, keep it lightweight.",
+            )
+        )
+        alignment = self.alignment(directory)
+        self.assertIn("Should this remain a lightweight artifact?", alignment)
+        self.assertIn("Yes, keep it lightweight.", alignment)
+        self.assertIn('"status":"answered"', alignment)
 
     def test_empty_structured_response_records_no_answer_resolution(self) -> None:
         self.start_plan()
@@ -447,6 +547,21 @@ class PlanArtifactsTest(unittest.TestCase):
         self.assertEqual(plan + "\n", (directory / "current.md").read_text())
         self.assertEqual(plan + "\n", (directory / "revisions" / "0001.md").read_text())
 
+    def test_plan_can_contain_fenced_code_without_losing_content(self) -> None:
+        plan = (
+            "# Plan With Code\n\n"
+            "```python\n"
+            "print('keep the full body')\n"
+            "```\n\n"
+            "Verify the saved artifact byte for byte."
+        )
+
+        result = self.save_default_artifact(plan)
+
+        self.assertTrue(result["continue"])
+        directory = self.plan_dirs()[0]
+        self.assertEqual(plan + "\n", (directory / "current.md").read_text())
+
     def test_default_artifact_handoff_recovers_from_transcript(self) -> None:
         plan = "# Recovered Default Plan\n\nRead the invisible markers from rollout."
         turn_id = "turn-default-transcript"
@@ -473,6 +588,51 @@ class PlanArtifactsTest(unittest.TestCase):
         self.assertTrue(result["continue"])
         directory = self.plan_dirs()[0]
         self.assertEqual(plan + "\n", (directory / "current.md").read_text())
+
+    def test_inline_and_fenced_markers_are_not_artifacts(self) -> None:
+        messages = [
+            "Example only: <proposed_plan>...</proposed_plan>",
+            "Should this explanatory response persist?",
+            (
+                "```html\n"
+                "<!-- superpowers-artifact-plan -->\n"
+                "# Example Plan\n\n"
+                "Do not persist this fenced example.\n"
+                "<!-- /superpowers-artifact-plan -->\n"
+                "```"
+            ),
+            (
+                "```html\n"
+                "<!-- superpowers-plan-question -->\n"
+                "Do not record this fenced example?\n"
+                "<!-- /superpowers-plan-question -->\n"
+                "```"
+            ),
+        ]
+        for index, message in enumerate(messages):
+            result = plan_artifacts.handle_payload(
+                self.payload(
+                    "Stop",
+                    session_id=f"session-example-{index}",
+                    turn_id=f"turn-example-{index}",
+                    mode="default",
+                    last_assistant_message=message,
+                )
+            )
+            self.assertTrue(result["continue"])
+        self.assertFalse((self.cwd / ".plan").exists())
+
+    def test_placeholder_plan_is_rejected(self) -> None:
+        result = plan_artifacts.handle_payload(
+            self.payload(
+                "Stop",
+                mode="default",
+                last_assistant_message="<proposed_plan>\n...\n</proposed_plan>",
+            )
+        )
+        self.assertFalse(result["continue"])
+        self.assertIn("placeholder", result["stopReason"].lower())
+        self.assertFalse((self.cwd / ".plan").exists())
 
     def test_unmarked_default_reply_does_not_overwrite_active_plan(self) -> None:
         self.start_plan()

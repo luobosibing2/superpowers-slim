@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: Use in Plan mode when product, architecture, or behavior requirements need clarification and approval before a substantial implementation plan.
+description: Use when an explicit Plan or Default-mode planning request needs product, architecture, or behavior clarification before a substantial implementation plan.
 ---
 
 # Brainstorming
@@ -12,7 +12,8 @@ This is a Plan-stage method, not a prerequisite for every task.
 
 ## Use When
 
-- The user is in Plan mode and important product or technical choices remain open.
+- The user explicitly requests planning or design in Plan or Default mode and
+  important product or technical choices remain open.
 - A substantial behavior change has multiple plausible approaches.
 - Success criteria, audience, constraints, or boundaries need clarification.
 
@@ -35,11 +36,11 @@ happen later.
 
 ## Alignment Recording
 
-During Plan work, every question and answer must be recoverable in the active
-Plan's `alignment.md`. Prefer `request_user_input` for structured questions; the
-Plan artifact hook records the question before display and pairs the tool result
-afterward. For a directly written question, wrap the complete question context in
-the invisible markers below so the Stop hook can record it as one Q entry:
+Every root-agent `request_user_input` question in Plan or Default mode is recorded
+in the active task's `alignment.md`; no special question ID prefix is required.
+The hook records each question before display and pairs the tool result afterward.
+For a directly written question, wrap the complete question context in the
+invisible markers below so the Stop hook can record it as one Q entry:
 
 ```html
 <!-- superpowers-plan-question -->
@@ -58,4 +59,6 @@ remain, ask one focused recorded question and stop. Otherwise invoke
 `superpowers:writing-plans` when a substantial implementation plan is needed.
 
 Brainstorming never authorizes code changes, sub-agent delegation, worktree
-creation, or any other execution action.
+creation, or any other execution action. A request to make a Plan is planning-only
+unless the same instruction also authorizes execution or the user authorizes it
+later.
