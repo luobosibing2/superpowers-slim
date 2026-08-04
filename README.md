@@ -41,10 +41,14 @@ Codex task.
 
 The planning order is requirement alignment, complete candidate, inline
 Self-Review, durable write, Plan Handoff, and user approval. Required writes fail
-closed. The adapter injects only the active artifact paths, leaving Codex's native
-Plan-to-Execute handoff intact. It adds no reviewer loop, Plan hash, MCP server,
-Git snapshot, completion gate, or top-level workflow controller, and it does not
-change `.gitignore` or decide whether `.plan/` is committed.
+closed. In native Plan mode, Codex's Plan-to-Execute handoff remains intact. When
+an associated task produces or revises a Plan in Default mode, the visible Plan
+body uses invisible HTML markers so the same Stop hook can append the revision
+without exposing `<proposed_plan>` or pretending a file-diff review is Plan
+approval. The adapter injects only the active artifact paths. It adds no reviewer
+loop, Plan hash, MCP server, Git snapshot, completion gate, or top-level workflow
+controller, and it does not change `.gitignore` or decide whether `.plan/` is
+committed.
 
 Codex discovers the adapter through the standard `hooks/hooks.json` plugin path;
 the manifest advertises its `Write` capability and Plan-journal keywords. A

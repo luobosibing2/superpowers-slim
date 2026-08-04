@@ -100,8 +100,14 @@ For every revision:
 3. Reconcile the full candidate against every entry in `alignment.md`.
 4. Run Plan Self-Review again over the complete candidate. Fix plan-only defects
    inline; route requirement or design gaps back to `superpowers:brainstorming`.
-5. Only after the full candidate is clean, emit it once inside
-   `<proposed_plan>...</proposed_plan>`.
+5. Only after the full candidate is clean, use the handoff for the active mode:
+   - In native Plan mode, emit it once inside
+     `<proposed_plan>...</proposed_plan>`.
+   - In Default mode with Plan artifacts active, do not emit `<proposed_plan>`.
+     Present the complete visible Plan once between the invisible HTML markers
+     `<!-- superpowers-artifact-plan -->` and
+     `<!-- /superpowers-artifact-plan -->`. This is an artifact handoff, not a
+     native Plan approval card.
 
 The Stop hook writes a changed candidate to the next non-overwriting
 `revisions/NNNN.md`, then atomically replaces `current.md`, before the Handoff can
@@ -120,6 +126,8 @@ Self-Review, durable write, Plan Handoff, then user approval. The Handoff contai
 the chosen approach, constraints, interfaces, tasks, verification, explicit
 assumptions, and unresolved risks. Stop and wait for the user to authorize
 implementation unless the user already authorized Plan plus execution. A Plan
-request by itself is not execution authorization. Codex's native Plan-to-Execute
-handoff remains authoritative; the plugin injects only artifact paths and never a
-second copy of the Plan.
+request by itself is not execution authorization. In Plan mode, Codex's native
+Plan-to-Execute handoff remains authoritative. In Default mode, the artifact
+handoff only persists the candidate and still waits for explicit execution
+authorization. A file-diff review action is not Plan approval.
+The plugin injects only artifact paths and never a second copy of the Plan.

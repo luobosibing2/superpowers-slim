@@ -15,6 +15,11 @@ from typing import Any
 
 
 PLAN_RE = re.compile(r"<proposed_plan>\s*(.*?)\s*</proposed_plan>", re.DOTALL)
+ARTIFACT_PLAN_RE = re.compile(
+    r"<!-- superpowers-artifact-plan -->\s*(.*?)\s*"
+    r"<!-- /superpowers-artifact-plan -->",
+    re.DOTALL,
+)
 ENTRY_RE = re.compile(r"<!-- superpowers-entry (\{.*?\}) -->")
 QUESTION_RE = re.compile(
     r"<!-- superpowers-plan-question -->\s*(.*?)\s*"
@@ -314,6 +319,14 @@ def latest_collaboration_mode(transcript_path: Any, turn_id: str | None = None) 
     return exact or latest
 
 
+def marked_plan(message: str) -> str | None:
+    for pattern in (PLAN_RE, ARTIFACT_PLAN_RE):
+        match = pattern.search(message)
+        if match:
+            return match.group(1).strip()
+    return None
+
+
 def plan_from_transcript(transcript_path: Any, turn_id: str) -> str | None:
     if not transcript_path:
         return None
@@ -352,23 +365,36 @@ def plan_from_transcript(transcript_path: Any, turn_id: str) -> str | None:
                 for part in content
                 if isinstance(part, dict) and part.get("type") == "output_text"
             )
-            match = PLAN_RE.search(combined)
-            if match:
-                candidate = match.group(1).strip()
+            marked = marked_plan(combined)
+            if marked is not None:
+                candidate = marked
     return candidate
 
 
-def pointer_context(directory: Path) -> str:
+def pointer_context(directory: Path, mode: str | None = None) -> str:
     alignment = directory / "alignment.md"
     current = directory / "current.md"
     current_line = str(current) if current.is_file() else "not created yet"
-    return (
+    context = (
         "Superpowers Plan artifacts are active for this task.\n"
         f"Alignment: {alignment}\n"
         f"Current plan: {current_line}\n"
         "Before revising or implementing, read these files only when their exact content is not "
-        "already present in the current context. Keep Codex's native Plan handoff; do not inject "
-        "the full Plan automatically."
+        "already present in the current context. Do not inject the full Plan automatically.\n"
+    )
+    if mode == "plan":
+        return context + "This turn is in Plan mode; use Codex's native Plan handoff."
+    if mode == "default":
+        return context + (
+            "This turn is in Default mode. Do not emit <proposed_plan> tags. When presenting a "
+            "complete Plan or revision, place the visible Plan body between the invisible HTML "
+            "markers <!-- superpowers-artifact-plan --> and "
+            "<!-- /superpowers-artifact-plan --> so the Stop hook can persist it. Treat that as "
+            "an artifact handoff, not native Plan approval."
+        )
+    return context + (
+        "Use Codex's native Plan handoff only in Plan mode. In Default mode, use the invisible "
+        "superpowers-artifact-plan markers for a complete Plan revision."
     )
 
 
@@ -706,7 +732,7 @@ def handle_user_prompt(payload: dict[str, Any]) -> dict[str, Any]:
         cancel_pending_structured(directory, session_id)
     elif directory is not None:
         cancel_pending_structured(directory, session_id)
-    return success_output(pointer_context(directory) if directory is not None else None)
+    return success_output(pointer_context(directory, mode) if directory is not None else None)
 
 
 def handle_pre_tool(payload: dict[str, Any]) -> dict[str, Any]:
@@ -740,10 +766,11 @@ def handle_post_tool(payload: dict[str, Any]) -> dict[str, Any]:
 
 def handle_stop(payload: dict[str, Any]) -> dict[str, Any]:
     message = str(payload.get("last_assistant_message") or "")
-    plan_match = PLAN_RE.search(message)
-    plan = plan_match.group(1).strip() if plan_match else plan_from_transcript(
-        payload.get("transcript_path"), str(payload.get("turn_id", ""))
-    )
+    plan = marked_plan(message)
+    if plan is None:
+        plan = plan_from_transcript(
+            payload.get("transcript_path"), str(payload.get("turn_id", ""))
+        )
     mode = latest_collaboration_mode(payload.get("transcript_path"), payload.get("turn_id"))
     if mode != "plan" and plan is None:
         return {"continue": True, "suppressOutput": True}
@@ -767,7 +794,8 @@ def handle_session_start(payload: dict[str, Any]) -> dict[str, Any]:
     )
     if directory is not None:
         cancel_pending_structured(directory, str(payload.get("session_id", "")))
-    return session_start_output(pointer_context(directory) if directory is not None else None)
+    mode = latest_collaboration_mode(payload.get("transcript_path"), payload.get("turn_id"))
+    return session_start_output(pointer_context(directory, mode) if directory is not None else None)
 
 
 def handle_payload(payload: dict[str, Any]) -> dict[str, Any]:

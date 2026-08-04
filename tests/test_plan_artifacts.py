@@ -52,6 +52,19 @@ class PlanArtifactsTest(unittest.TestCase):
         with path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(item) + "\n")
 
+    def append_assistant_message(self, path: Path, turn_id: str, message: str) -> None:
+        item = {
+            "type": "response_item",
+            "payload": {
+                "type": "message",
+                "role": "assistant",
+                "content": [{"type": "output_text", "text": message}],
+                "internal_chat_message_metadata_passthrough": {"turn_id": turn_id},
+            },
+        }
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(json.dumps(item) + "\n")
+
     def payload(
         self,
         event: str,
@@ -100,6 +113,27 @@ class PlanArtifactsTest(unittest.TestCase):
             )
         )
 
+    def save_default_artifact(
+        self,
+        body: str,
+        session_id: str = "session-a1b2c3d4",
+        turn_id: str = "turn-default-plan",
+    ):
+        return plan_artifacts.handle_payload(
+            self.payload(
+                "Stop",
+                session_id=session_id,
+                turn_id=turn_id,
+                mode="default",
+                last_assistant_message=(
+                    "<!-- superpowers-artifact-plan -->\n"
+                    f"{body}\n"
+                    "<!-- /superpowers-artifact-plan -->\n\n"
+                    "The complete Plan was written to the active artifact."
+                ),
+            )
+        )
+
     def test_plan_prompt_creates_draft_and_records_directive(self) -> None:
         directory = self.start_plan()
         self.assertTrue(directory.name.startswith("draft-sessiona"))
@@ -116,9 +150,23 @@ class PlanArtifactsTest(unittest.TestCase):
         )
         context = result["hookSpecificOutput"]["additionalContext"]
         self.assertIn(str(directory / "alignment.md"), context)
+        self.assertIn("This turn is in Plan mode", context)
         self.assertNotIn("Keep every approved experiment definition.", context)
         self.assertNotIn("SHA", context)
         self.assertNotIn("revision", context.lower())
+
+        default_result = plan_artifacts.handle_payload(
+            self.payload(
+                "UserPromptSubmit",
+                turn_id="turn-3",
+                mode="default",
+                prompt="Revise the active Plan without switching modes.",
+            )
+        )
+        default_context = default_result["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("This turn is in Default mode", default_context)
+        self.assertIn("Do not emit <proposed_plan> tags", default_context)
+        self.assertIn("<!-- superpowers-artifact-plan -->", default_context)
 
     def test_structured_tool_questions_and_answers_are_recorded(self) -> None:
         self.start_plan()
@@ -371,6 +419,82 @@ class PlanArtifactsTest(unittest.TestCase):
         self.assertIn("Revise this Plan to version three.", alignment)
         self.assertNotIn("Explain the current status.", alignment)
         self.assertNotIn("Implement the plan.", alignment)
+
+    def test_default_artifact_handoff_appends_revision_without_native_wrapper(self) -> None:
+        self.start_plan()
+        first = "# Default Artifact Plan\n\nVersion one."
+        second = "# Default Artifact Plan\n\nVersion two."
+        self.save(first)
+        directory = self.plan_dirs()[0]
+
+        result = self.save_default_artifact(second)
+
+        self.assertTrue(result["continue"])
+        self.assertEqual([directory], self.plan_dirs())
+        self.assertEqual(second + "\n", (directory / "current.md").read_text())
+        self.assertEqual(
+            ["0001.md", "0002.md"],
+            sorted(path.name for path in (directory / "revisions").iterdir()),
+        )
+
+    def test_default_artifact_handoff_can_create_journal_without_plan_mode(self) -> None:
+        plan = "# Default-Only Plan\n\nStart the journal from this handoff."
+
+        result = self.save_default_artifact(plan)
+
+        self.assertTrue(result["continue"])
+        directory = self.plan_dirs()[0]
+        self.assertEqual(plan + "\n", (directory / "current.md").read_text())
+        self.assertEqual(plan + "\n", (directory / "revisions" / "0001.md").read_text())
+
+    def test_default_artifact_handoff_recovers_from_transcript(self) -> None:
+        plan = "# Recovered Default Plan\n\nRead the invisible markers from rollout."
+        turn_id = "turn-default-transcript"
+        transcript = self.transcript("session-a1b2c3d4", turn_id, "default")
+        self.append_assistant_message(
+            transcript,
+            turn_id,
+            "<!-- superpowers-artifact-plan -->\n"
+            f"{plan}\n"
+            "<!-- /superpowers-artifact-plan -->",
+        )
+
+        result = plan_artifacts.handle_payload(
+            {
+                "hook_event_name": "Stop",
+                "session_id": "session-a1b2c3d4",
+                "turn_id": turn_id,
+                "cwd": str(self.cwd),
+                "transcript_path": str(transcript),
+                "last_assistant_message": None,
+            }
+        )
+
+        self.assertTrue(result["continue"])
+        directory = self.plan_dirs()[0]
+        self.assertEqual(plan + "\n", (directory / "current.md").read_text())
+
+    def test_unmarked_default_reply_does_not_overwrite_active_plan(self) -> None:
+        self.start_plan()
+        plan = "# Durable Plan\n\nKeep this version."
+        self.save(plan)
+        directory = self.plan_dirs()[0]
+
+        result = plan_artifacts.handle_payload(
+            self.payload(
+                "Stop",
+                turn_id="turn-default-explanation",
+                mode="default",
+                last_assistant_message="# Status\n\nThis is an ordinary explanation.",
+            )
+        )
+
+        self.assertTrue(result["continue"])
+        self.assertEqual(plan + "\n", (directory / "current.md").read_text())
+        self.assertEqual(
+            ["0001.md"],
+            sorted(path.name for path in (directory / "revisions").iterdir()),
+        )
 
     def test_stop_recovers_native_plan_item_when_last_message_is_stripped(self) -> None:
         self.start_plan()
