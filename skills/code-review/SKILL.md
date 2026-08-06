@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Use when the user explicitly requests implementation review or a completed change has high semantic risk.
+description: Use only when the user explicitly requests implementation review.
 ---
 
 # Code Review
@@ -8,17 +8,14 @@ description: Use when the user explicitly requests implementation review or a co
 ## Scope
 
 Run a bounded independent implementation review. This is not a per-task reviewer
-pipeline. Ordinary low-risk work does not trigger it automatically.
+pipeline and never starts automatically from risk, difficulty, or change size.
 
 ## Trigger
 
-- The user explicitly asks for implementation review.
-- The completed change affects security, authentication, permissions, payments,
-  data migration, persistent schema, public API, compatibility, or comparable
-  cross-module semantics.
-
-File count and line count alone are not high-risk signals. If neither trigger is
-present, return to `superpowers:verification-before-completion`.
+The only trigger is that the user explicitly requests implementation review.
+Security impact, compatibility risk, complexity, file count, line count, or the
+agent's own confidence must never substitute for that request. Without it, return
+to `superpowers:verification-before-completion` without invoking this Skill.
 
 ## Review Loops
 

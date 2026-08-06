@@ -30,6 +30,8 @@ This repository is a Codex-only slim profile, not the upstream complete workflow
   file-diff review action Plan approval. Unmarked Default replies must not alter
   `current.md`.
 - Keep all `SKILL.md` files at or below 500 lines in total.
+- Invoke `code-review` only when the user explicitly requests implementation
+  review. Risk, difficulty, complexity, or change size must not trigger it.
 - Keep Review Loops to one full review plus one scoped re-review.
 - Keep reviewers read-only and prohibit nested delegation from the reviewer.
 - Keep code research and repository exploration outside `brainstorming`.

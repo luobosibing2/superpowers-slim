@@ -11,7 +11,7 @@ into every conversation.
 - `writing-plans`: produce decision-complete plans for substantial changes.
 - `systematic-debugging`: investigate failures from evidence to root cause.
 - `verification-before-completion`: require fresh evidence before completion claims.
-- `code-review`: run a bounded independent review for manual or high-risk changes.
+- `code-review`: run a bounded independent review only when manually requested.
 
 Codex, direct user instructions, and `AGENTS.md` own the overall workflow.
 Multi-agent delegation, worktree preparation, implementation, ordinary review,
@@ -60,7 +60,7 @@ the manifest advertises its `Write` capability and Plan-journal keywords. A
 cancelled structured question is finalized as cancelled or failed at the next
 Stop, prompt submission, or session start if no successful PostToolUse arrived.
 
-Manual or high-risk implementation review uses one fresh, read-only reviewer.
+Manually requested implementation review uses one fresh, read-only reviewer.
 Round one reviews the complete task scope. If blocking findings are fixed, one
 fresh scoped re-review may inspect those fixes and nearby regressions. There is no
 third round. The root agent owns fixes, integration, verification, and the final

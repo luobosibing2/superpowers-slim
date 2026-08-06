@@ -190,10 +190,16 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         self.assertIn("fresh evidence", verification.lower())
         self.assertIn("superpowers:code-review", verification)
         self.assertIn("user explicitly asks", verification)
-        self.assertIn("File or line", verification)
+        self.assertNotIn("change is high risk", verification)
+        self.assertNotIn("High-risk changes include", verification)
+        self.assertIn("file or line", verification.lower())
 
     def test_review_is_bounded_and_read_only(self) -> None:
         review = skill_text("code-review").lower()
+        self.assertIn("only trigger", review)
+        self.assertIn("user explicitly requests", review)
+        self.assertNotIn("high semantic risk", review)
+        self.assertNotIn("security, authentication", review)
         self.assertIn("full review", review)
         self.assertIn("scoped", review)
         self.assertIn("third round", review)
