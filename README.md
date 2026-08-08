@@ -60,9 +60,8 @@ committed.
 Manually requested implementation review uses one fresh, read-only reviewer.
 Round one reviews the complete task scope. If blocking findings are fixed, one
 fresh scoped re-review may inspect those fixes and nearby regressions. There is no
-third round. The root agent owns fixes, integration, native completion verification,
-and the final completion decision. Completion verification is not a Superpowers
-Skill or handoff.
+third round. The root agent owns fixes, integration, and the final completion
+decision.
 
 ## Local installation
 

@@ -28,10 +28,6 @@ evidence that the failure is understood.
 7. **Verify:** rerun the reproduction, relevant regression tests, and nearby tests
    that could expose collateral behavior.
 
-For the final completion claim, the root agent reports the reproduction, root
-cause, fix, and fresh test evidence directly. No completion Skill handoff is
-required.
-
 ## Escalation
 
 When hypotheses or fixes repeatedly fail, pause and re-check assumptions,

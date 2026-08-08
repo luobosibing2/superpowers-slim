@@ -39,4 +39,4 @@ pass even if the reviewer labels its overall verdict inconsistently.
 ## Review Handoff
 
 Record the round, scope, review range, verdict, and blocking findings. Then return
-to the root agent for its native final evidence audit.
+control to the root agent.

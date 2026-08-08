@@ -156,22 +156,25 @@ class SlimSuperpowersContractTest(unittest.TestCase):
             commands,
         )
 
-    def test_debugging_uses_evidence_without_fixed_attempt_contract(self) -> None:
+    def test_debugging_keeps_scoped_root_cause_method(self) -> None:
         debugging = skill_text("systematic-debugging")
         self.assertIn("root cause", debugging.lower())
-        self.assertIn("fresh test evidence", debugging.lower())
+        self.assertIn("rerun the reproduction", debugging.lower())
         self.assertIn("not a fixed attempt counter", debugging)
+        self.assertNotIn("final completion claim", debugging.lower())
         self.assertNotIn("After two", debugging)
         self.assertNotIn("After three", debugging)
 
     def test_review_keeps_the_user_selected_bounded_policy(self) -> None:
-        review = skill_text("code-review").lower()
+        review = " ".join(skill_text("code-review").lower().split())
         self.assertIn("user explicitly requests", review)
         self.assertIn("full review", review)
         self.assertIn("scoped", review)
         self.assertIn("third round", review)
         self.assertIn("read-only", review)
         self.assertIn("must not delegate", review)
+        self.assertIn("return control to the root agent", review)
+        self.assertNotIn("evidence audit", review)
         self.assertNotIn("fix_required", review)
 
 
