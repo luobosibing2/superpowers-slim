@@ -79,6 +79,7 @@ profile's active behavior.
 ## Research notes
 
 - [Superpowers 压缩方法与行为评估实验研究](docs/research/2026-07-26-superpowers-compression-and-behavior-evals.md)
+- [从方法到枷锁：精简 Superpowers 时踩过的六个坑](docs/research/2026-08-08-from-methods-to-contracts-superpowers-slim-pitfalls.md)
 
 ## License
 
