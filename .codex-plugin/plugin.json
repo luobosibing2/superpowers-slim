@@ -1,7 +1,7 @@
 {
   "name": "superpowers",
-  "version": "6.1.1+codex.20260808043452",
-  "description": "Four scoped Codex methods with a lightweight durable Plan journal.",
+  "version": "6.1.1+codex.20260808093005",
+  "description": "Four scoped Codex methods with lightweight Plan reminders.",
   "author": {
     "name": "Jesse Vincent",
     "email": "jesse@fsck.com",
@@ -16,7 +16,7 @@
     "debugging",
     "requirements",
     "hooks",
-    "plan-journal",
+    "plan-reminders",
     "code-review",
     "skills"
   ],
@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Superpowers Slim",
     "shortDescription": "Four lightweight, scoped development methods",
-    "longDescription": "Adds optional Codex methods for design clarification, durable implementation planning, systematic debugging, and manually requested bounded independent review.",
+    "longDescription": "Adds optional Codex methods for design clarification, implementation planning with two mutable reminders, systematic debugging, and manually requested bounded independent review.",
     "developerName": "Jesse Vincent",
     "category": "Developer Tools",
     "capabilities": [
@@ -34,7 +34,7 @@
     ],
     "defaultPrompt": [
       "Help me clarify the design for this substantial change.",
-      "Create and durably preserve a decision-complete implementation plan for this work.",
+      "Create a decision-complete implementation plan for this work.",
       "Run a bounded independent review of this implementation."
     ],
     "websiteURL": "https://github.com/luobosibing2/superpowers-slim",

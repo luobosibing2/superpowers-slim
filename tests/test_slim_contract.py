@@ -23,18 +23,6 @@ REMOVED_SKILLS = {
     "writing-skills",
     "verification-before-completion",
 }
-REMOVED_RUNTIME_TERMS = {
-    "start_requirement_loop",
-    "await_requirement_input",
-    "approve_requirements",
-    "record_plan",
-    "begin_execution",
-    "assess_review",
-    "prepare_verification",
-    "record_verification",
-    "diff hash",
-    "mcpServers",
-}
 
 
 def skill_text(name: str) -> str:
@@ -65,10 +53,10 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         text = "\n".join(path.read_text() for path in surfaces)
         for name in REMOVED_SKILLS:
             self.assertNotIn(name, text)
-        for term in REMOVED_RUNTIME_TERMS:
+        for term in ("mcpServers", "diff hash", "PLAN_CHECKED"):
             self.assertNotIn(term, text)
 
-    def test_plan_journal_is_the_only_runtime_adapter(self) -> None:
+    def test_plan_reminder_is_the_only_runtime_adapter(self) -> None:
         expected = {"hooks/hooks.json", "scripts/plan_artifacts.py"}
         actual = {
             path.relative_to(ROOT).as_posix()
@@ -80,97 +68,83 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         for relative in (".mcp.json", "schemas"):
             self.assertFalse((ROOT / relative).exists(), relative)
 
-    def test_non_codex_bootstraps_are_removed(self) -> None:
-        for relative in (".claude-plugin", ".cursor-plugin", ".kimi-plugin", ".opencode", ".pi"):
-            self.assertFalse((ROOT / relative).exists(), relative)
-
-    def test_manifest_describes_scoped_methods(self) -> None:
+    def test_manifest_describes_two_mutable_reminders(self) -> None:
         manifest = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text())
         self.assertEqual("superpowers", manifest["name"])
         self.assertIn("scoped", manifest["description"].lower())
+        self.assertIn("plan-reminders", manifest["keywords"])
+        self.assertNotIn("plan-journal", manifest["keywords"])
         self.assertIn("Write", manifest["interface"]["capabilities"])
-        self.assertIn("hooks", manifest["keywords"])
-        self.assertIn("plan-journal", manifest["keywords"])
-        self.assertTrue((ROOT / "hooks" / "hooks.json").is_file())
-        self.assertNotIn("hooks", manifest)
         self.assertNotIn("mcpServers", manifest)
-        self.assertNotIn("TDD", manifest["interface"]["longDescription"])
 
-    def test_requirement_handoff_and_negative_trigger_are_explicit(self) -> None:
+    def test_planning_keeps_semantic_freedom_and_execution_boundary(self) -> None:
         brainstorming = skill_text("brainstorming")
         planning = skill_text("writing-plans")
+        compact_planning = " ".join(planning.split())
         self.assertIn("code research", brainstorming.lower())
-        self.assertIn("Plan or Default mode", brainstorming)
-        self.assertIn("Design Handoff", brainstorming)
         self.assertIn("superpowers:writing-plans", brainstorming)
         self.assertIn("superpowers:brainstorming", planning)
-        self.assertIn("Plan or Default mode", planning)
-        self.assertIn("Plan Handoff", planning)
-        self.assertIn("Global Constraints", planning)
-        self.assertIn("Interfaces", planning)
-        self.assertIn("not execution authorization", planning)
-        self.assertIn("already authorized Plan plus execution", planning)
-
-    def test_plan_self_review_is_inline_and_routes_gaps(self) -> None:
-        planning = skill_text("writing-plans")
-        self.assertIn("## Plan Self-Review", planning)
-        self.assertIn("Requirement coverage", planning)
-        self.assertIn("Decision completeness", planning)
-        self.assertIn("Placeholder and ambiguity scan", planning)
-        self.assertIn("Cross-task consistency", planning)
-        self.assertIn("Constraints and verification", planning)
-        self.assertIn("Fix plan-only issues inline", planning)
-        self.assertIn("rerun the affected checks", planning)
-        self.assertIn("return to `superpowers:brainstorming`", planning)
-        self.assertIn("Only after the full candidate is clean", planning)
-        self.assertNotIn("plan-document-reviewer", planning)
-        adapter = (ROOT / "scripts" / "plan_artifacts.py").read_text()
-        self.assertNotIn("PLAN_CHECKED", adapter)
-        self.assertNotIn("sha256", adapter.lower())
-        self.assertLess(
-            planning.index("## Plan Self-Review"),
-            planning.index("## Execution Boundary"),
+        self.assertIn("model-maintained summary", planning)
+        self.assertIn("latest complete Plan", planning)
+        self.assertIn("real consumer", planning)
+        self.assertIn("minimum observable verification", planning)
+        self.assertIn(
+            "does not switch collaboration mode or authorize implementation",
+            compact_planning,
         )
+        self.assertIn("explicit implementation authorization", planning)
+        self.assertNotIn("Each task must define:", planning)
+        self.assertNotIn("Global Constraints", planning)
+        self.assertNotIn("Plan Revision Safety", planning)
 
-    def test_plan_revision_contract_is_durable_and_ordered(self) -> None:
+    def test_internal_representation_is_not_promoted_to_contract(self) -> None:
+        planning = skill_text("writing-plans")
+        compact_planning = " ".join(planning.split())
+        self.assertIn("Do not freeze internal functions", planning)
+        self.assertIn("producer and consumer can change together", planning)
+        self.assertIn("ordinary model judgment", compact_planning)
+        self.assertNotIn("Map every approved requirement", planning)
+        self.assertNotIn("revisions/NNNN.md", planning)
+
+    def test_alignment_is_current_summary_not_question_protocol(self) -> None:
         brainstorming = skill_text("brainstorming")
-        planning = skill_text("writing-plans")
-        readme = (ROOT / "README.md").read_text()
-        self.assertIn("superpowers-plan-question", brainstorming)
-        self.assertIn("Every root-agent `request_user_input` question", brainstorming)
-        self.assertNotIn("superpowers_plan_", brainstorming)
-        self.assertIn("alignment.md", planning)
-        self.assertIn("current.md", planning)
-        self.assertIn("## Plan Revision Safety", planning)
-        self.assertIn("complete existing `current.md` as the baseline", planning)
-        self.assertIn("Apply only approved changes", planning)
-        self.assertIn("revisions/NNNN.md", planning)
-        self.assertIn("atomically replaces `current.md`", planning)
-        self.assertIn("before the Handoff can", planning)
-        self.assertIn("<!-- superpowers-artifact-plan -->", planning)
-        self.assertIn("Default mode", planning)
-        self.assertIn("do not emit `<proposed_plan>`", planning)
-        self.assertIn("requirement alignment, complete candidate Plan, Plan", planning)
-        self.assertIn("durable write, Plan Handoff, then user approval", planning)
-        self.assertIn("injects only artifact paths", planning)
-        self.assertIn("Different tasks in the same cwd", readme)
-        self.assertIn("every root-agent", readme)
-        self.assertNotIn("SHA-256", planning)
-        self.assertLess(
-            planning.index("## Plan Self-Review"),
-            planning.index("## Plan Revision Safety"),
-        )
-        self.assertLess(
-            planning.index("## Plan Revision Safety"),
-            planning.index("## Execution Boundary"),
-        )
+        adapter = (ROOT / "scripts" / "plan_artifacts.py").read_text()
+        self.assertIn("Rewrite obsolete content", brainstorming)
+        self.assertIn("request_user_input", brainstorming)
+        for term in (
+            "superpowers-plan-question",
+            "ENTRY_RE",
+            "question_id",
+            "pending",
+            "cancelled_or_failed",
+            "append_question",
+            "answer_pending",
+        ):
+            self.assertNotIn(term, adapter)
 
-    def test_hook_manifest_uses_one_dependency_free_adapter(self) -> None:
+    def test_runtime_has_no_version_or_identity_protocol(self) -> None:
+        adapter = (ROOT / "scripts" / "plan_artifacts.py").read_text()
+        for term in (
+            "revisions",
+            "find_plan_for_handoff",
+            "native_handoff_plan",
+            "sha256",
+            "stop_output",
+            "block_output",
+            "JournalError",
+        ):
+            self.assertNotIn(term, adapter)
+
+    def test_structured_questions_remain_native(self) -> None:
+        brainstorming = skill_text("brainstorming")
+        compact_brainstorming = " ".join(brainstorming.split())
+        self.assertIn("When `request_user_input` is listed", compact_brainstorming)
+        self.assertIn("When it is not listed", compact_brainstorming)
+        self.assertIn("ask one necessary question directly", compact_brainstorming)
+
+    def test_hook_manifest_has_no_question_interception(self) -> None:
         hooks = json.loads((ROOT / "hooks" / "hooks.json").read_text())["hooks"]
-        self.assertEqual(
-            {"SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse", "Stop"},
-            set(hooks),
-        )
+        self.assertEqual({"SessionStart", "UserPromptSubmit", "Stop"}, set(hooks))
         commands = {
             hook["command"]
             for groups in hooks.values()
@@ -182,26 +156,23 @@ class SlimSuperpowersContractTest(unittest.TestCase):
             commands,
         )
 
-    def test_debugging_uses_native_completion_evidence(self) -> None:
-        debugging = skill_text("systematic-debugging").lower()
-        self.assertIn("root cause", debugging)
-        self.assertIn("fresh test evidence", debugging)
-        self.assertIn("no completion skill handoff", debugging)
+    def test_debugging_uses_evidence_without_fixed_attempt_contract(self) -> None:
+        debugging = skill_text("systematic-debugging")
+        self.assertIn("root cause", debugging.lower())
+        self.assertIn("fresh test evidence", debugging.lower())
+        self.assertIn("not a fixed attempt counter", debugging)
+        self.assertNotIn("After two", debugging)
+        self.assertNotIn("After three", debugging)
 
-    def test_review_is_bounded_and_read_only(self) -> None:
+    def test_review_keeps_the_user_selected_bounded_policy(self) -> None:
         review = skill_text("code-review").lower()
-        self.assertIn("only trigger", review)
         self.assertIn("user explicitly requests", review)
-        self.assertNotIn("high semantic risk", review)
-        self.assertNotIn("security, authentication", review)
         self.assertIn("full review", review)
         self.assertIn("scoped", review)
         self.assertIn("third round", review)
         self.assertIn("read-only", review)
         self.assertIn("must not delegate", review)
-        self.assertIn("review handoff", review)
-        self.assertIn("native final evidence audit", review)
-        self.assertNotIn("verification-before-completion", review)
+        self.assertNotIn("fix_required", review)
 
 
 if __name__ == "__main__":

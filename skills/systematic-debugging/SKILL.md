@@ -34,9 +34,9 @@ required.
 
 ## Escalation
 
-After two unsupported hypotheses, pause and re-check assumptions, environment,
-and boundaries. After three failed fixes, treat the design or component contract
-as suspect rather than stacking another patch.
+When hypotheses or fixes repeatedly fail, pause and re-check assumptions,
+environment, boundaries, and the design itself rather than stacking another patch.
+Treat this as judgment informed by evidence, not a fixed attempt counter.
 
 ## Evidence Record
 

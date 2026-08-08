@@ -33,8 +33,8 @@ to the root agent's normal work without invoking this Skill.
 6. Never start a third round. Report unresolved critical or major findings as
    blockers without claiming completion.
 
-Minor observations may accompany a pass. A critical or major finding always
-forces `fix_required`, even if a reviewer emits an inconsistent verdict.
+Minor observations may accompany a pass. A critical or major finding blocks a
+pass even if the reviewer labels its overall verdict inconsistently.
 
 ## Review Handoff
 

@@ -7,58 +7,33 @@ description: Use when an explicit Plan or Default-mode planning request needs pr
 
 ## Purpose
 
-Turn an uncertain design problem into an approved direction before planning.
-This is a Plan-stage method, not a prerequisite for every task.
+Resolve the few product, architecture, or behavior choices that materially change
+a substantial Plan. Do not turn ordinary exploration into a planning ceremony.
 
-## Use When
-
-- The user explicitly requests planning or design in Plan or Default mode and
-  important product or technical choices remain open.
-- A substantial behavior change has multiple plausible approaches.
-- Success criteria, audience, constraints, or boundaries need clarification.
-
-Do not use for ordinary conversation, code research, repository exploration,
-call-chain tracing, mechanism explanations, status checks, or a small change
-whose intent is already clear. Do not use it merely because implementation may
-happen later.
+Do not use for code research, repository exploration, call-chain tracing,
+mechanism explanations, status checks, or a small change whose intent is clear.
 
 ## Method
 
-1. Inspect the immediately discoverable project context before asking the user
-   for facts. Code research by itself does not activate this method.
-2. State the goal, audience, constraints, current state, and success criteria.
-3. Identify only the decisions that materially change the design.
-4. Offer two or three viable approaches when a real tradeoff exists. Lead with a
-   recommendation and explain the cost of each alternative.
-5. Resolve failure modes, compatibility, data flow, and testing expectations.
-6. Treat a direction as approved only when the user explicitly accepts it or an
-   authoritative repository source settles it. Silence is not approval.
+1. Inspect discoverable project facts before asking the user.
+2. Identify only unresolved choices that change the outcome or approach.
+3. When a real tradeoff exists, recommend one option and explain the meaningful
+   alternatives briefly.
+4. Treat a direction as approved only through explicit user direction or an
+   authoritative repository source. Silence is not approval.
 
-## Alignment Recording
+When `request_user_input` is listed for the current turn, use it. When it is not
+listed, ask one necessary question directly. Do not create question IDs, markers,
+pending states, or a separate record merely to prove that the conversation happened.
 
-Every root-agent `request_user_input` question in Plan or Default mode is recorded
-in the active task's `alignment.md`; no special question ID prefix is required.
-The hook records each question before display and pairs the tool result afterward.
-For a directly written question, wrap the complete question context in the
-invisible markers below so the Stop hook can record it as one Q entry:
+## Alignment Reminder
 
-```html
-<!-- superpowers-plan-question -->
-Complete question context
-<!-- /superpowers-plan-question -->
-```
+When material alignment changes, keep the active `alignment.md` as a concise
+summary of the decisions that are current now. Rewrite obsolete content instead
+of appending an audit history. The conversation and explicit user direction remain
+authoritative; a missing or stale reminder does not erase approval.
 
-Ask only questions that can materially change the design. If a required write
-fails, stop: an unrecorded question or answer is not an approved requirement.
-
-## Design Handoff
-
-Record the approved direction, approval evidence, constraints, success criteria,
-and any unresolved items in the active alignment artifact. If material items
-remain, ask one focused recorded question and stop. Otherwise invoke
-`superpowers:writing-plans` when a substantial implementation plan is needed.
-
-Brainstorming never authorizes code changes, sub-agent delegation, worktree
-creation, or any other execution action. A request to make a Plan is planning-only
-unless the same instruction also authorizes execution or the user authorizes it
-later.
+When the important choices are settled, pass the current direction to
+`superpowers:writing-plans` if a substantial Plan is useful. Brainstorming never
+authorizes implementation, delegation, or Git writes unless the same user
+instruction grants that authority.
