@@ -15,7 +15,7 @@ pipeline and never starts automatically from risk, difficulty, or change size.
 The only trigger is that the user explicitly requests implementation review.
 Security impact, compatibility risk, complexity, file count, line count, or the
 agent's own confidence must never substitute for that request. Without it, return
-to `superpowers:verification-before-completion` without invoking this Skill.
+to the root agent's normal work without invoking this Skill.
 
 ## Review Loops
 
@@ -39,4 +39,4 @@ forces `fix_required`, even if a reviewer emits an inconsistent verdict.
 ## Review Handoff
 
 Record the round, scope, review range, verdict, and blocking findings. Then return
-to `superpowers:verification-before-completion` for the final evidence audit.
+to the root agent for its native final evidence audit.

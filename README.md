@@ -1,6 +1,6 @@
 # Superpowers: Codex Slim Profile
 
-This local fork keeps five scoped methods derived from upstream Superpowers
+This local fork keeps four scoped methods derived from upstream Superpowers
 v6.1.1. It is not a complete development workflow and does not bootstrap itself
 into every conversation.
 
@@ -10,7 +10,6 @@ into every conversation.
   planning work.
 - `writing-plans`: produce decision-complete plans for substantial changes.
 - `systematic-debugging`: investigate failures from evidence to root cause.
-- `verification-before-completion`: require fresh evidence before completion claims.
 - `code-review`: run a bounded independent review only when manually requested.
 
 Codex, direct user instructions, and `AGENTS.md` own the overall workflow.
@@ -63,8 +62,9 @@ Stop, prompt submission, or session start if no successful PostToolUse arrived.
 Manually requested implementation review uses one fresh, read-only reviewer.
 Round one reviews the complete task scope. If blocking findings are fixed, one
 fresh scoped re-review may inspect those fixes and nearby regressions. There is no
-third round. The root agent owns fixes, integration, verification, and the final
-completion decision.
+third round. The root agent owns fixes, integration, native completion
+verification, and the final completion decision. Completion verification is not
+a Superpowers Skill or handoff.
 
 ## Local installation
 

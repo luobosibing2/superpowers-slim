@@ -2,8 +2,8 @@
 
 This repository is a Codex-only slim profile, not the upstream complete workflow.
 
-- Keep exactly five skill directories: `brainstorming`, `writing-plans`,
-  `systematic-debugging`, `verification-before-completion`, and `code-review`.
+- Keep exactly four skill directories: `brainstorming`, `writing-plans`,
+  `systematic-debugging`, and `code-review`.
 - Orchestrate methodology only through explicit handoffs between matching skills.
   The sole runtime exception is `hooks/hooks.json` plus
   `scripts/plan_artifacts.py`, which persist Plan alignment and complete revisions
@@ -32,6 +32,9 @@ This repository is a Codex-only slim profile, not the upstream complete workflow
 - Keep all `SKILL.md` files at or below 500 lines in total.
 - Invoke `code-review` only when the user explicitly requests implementation
   review. Risk, difficulty, complexity, or change size must not trigger it.
+- Completion evidence remains the root agent's native Codex responsibility, not
+  a Superpowers Skill or handoff. Use fresh evidence before completion claims,
+  commits, or pull requests.
 - Keep Review Loops to one full review plus one scoped re-review.
 - Keep reviewers read-only and prohibit nested delegation from the reviewer.
 - Keep code research and repository exploration outside `brainstorming`.

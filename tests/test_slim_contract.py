@@ -9,7 +9,6 @@ SKILLS = {
     "code-review",
     "writing-plans",
     "systematic-debugging",
-    "verification-before-completion",
 }
 REMOVED_SKILLS = {
     "using-superpowers",
@@ -22,6 +21,7 @@ REMOVED_SKILLS = {
     "test-driven-development",
     "using-git-worktrees",
     "writing-skills",
+    "verification-before-completion",
 }
 REMOVED_RUNTIME_TERMS = {
     "start_requirement_loop",
@@ -42,7 +42,7 @@ def skill_text(name: str) -> str:
 
 
 class SlimSuperpowersContractTest(unittest.TestCase):
-    def test_only_five_scoped_skills_are_exposed(self) -> None:
+    def test_only_four_scoped_skills_are_exposed(self) -> None:
         actual = {path.parent.name for path in (ROOT / "skills").glob("*/SKILL.md")}
         self.assertEqual(SKILLS, actual)
 
@@ -182,17 +182,11 @@ class SlimSuperpowersContractTest(unittest.TestCase):
             commands,
         )
 
-    def test_debugging_and_verification_handoff_is_explicit(self) -> None:
+    def test_debugging_uses_native_completion_evidence(self) -> None:
         debugging = skill_text("systematic-debugging").lower()
-        verification = skill_text("verification-before-completion")
         self.assertIn("root cause", debugging)
-        self.assertIn("superpowers:verification-before-completion", debugging)
-        self.assertIn("fresh evidence", verification.lower())
-        self.assertIn("superpowers:code-review", verification)
-        self.assertIn("user explicitly asks", verification)
-        self.assertNotIn("change is high risk", verification)
-        self.assertNotIn("High-risk changes include", verification)
-        self.assertIn("file or line", verification.lower())
+        self.assertIn("fresh test evidence", debugging)
+        self.assertIn("no completion skill handoff", debugging)
 
     def test_review_is_bounded_and_read_only(self) -> None:
         review = skill_text("code-review").lower()
@@ -206,7 +200,8 @@ class SlimSuperpowersContractTest(unittest.TestCase):
         self.assertIn("read-only", review)
         self.assertIn("must not delegate", review)
         self.assertIn("review handoff", review)
-        self.assertIn("superpowers:verification-before-completion", review)
+        self.assertIn("native final evidence audit", review)
+        self.assertNotIn("verification-before-completion", review)
 
 
 if __name__ == "__main__":

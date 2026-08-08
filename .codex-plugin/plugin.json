@@ -1,7 +1,7 @@
 {
   "name": "superpowers",
-  "version": "6.1.1+codex.20260806222159",
-  "description": "Five scoped Codex methods with a lightweight durable Plan journal.",
+  "version": "6.1.1+codex.20260808043452",
+  "description": "Four scoped Codex methods with a lightweight durable Plan journal.",
   "author": {
     "name": "Jesse Vincent",
     "email": "jesse@fsck.com",
@@ -14,7 +14,6 @@
     "brainstorming",
     "planning",
     "debugging",
-    "verification",
     "requirements",
     "hooks",
     "plan-journal",
@@ -24,8 +23,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Superpowers Slim",
-    "shortDescription": "Five lightweight, scoped development methods",
-    "longDescription": "Adds optional Codex methods for design clarification, durable implementation planning, systematic debugging, bounded independent review, and evidence-backed completion.",
+    "shortDescription": "Four lightweight, scoped development methods",
+    "longDescription": "Adds optional Codex methods for design clarification, durable implementation planning, systematic debugging, and manually requested bounded independent review.",
     "developerName": "Jesse Vincent",
     "category": "Developer Tools",
     "capabilities": [
